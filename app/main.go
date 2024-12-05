@@ -4,17 +4,26 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
+	"net/http"
 	"os"
 	"time"
 
+	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
 )
 
+type User struct {
+	ID    int    `json:"id"`
+	Name  string `json:"name"`
+	Email string `json:"email"`
+}
+
 type Info struct {
-	ID    int       `json:"id"`
-	Name  string    `json:"name"`
-	Price float64   `json:"price"`
-	Date  time.Time `json:"date"`
+	ID        int       `json:"id"`
+	EventTime time.Time `json:"event_time"`
+	Level     string    `json:"level"`
+	Message   string    `json:"message"`
 }
 
 func writeToClickhouse() {
@@ -69,10 +78,10 @@ func generateProducts(count int) []Info {
 	products := make([]Info, count)
 	for i := 0; i < count; i++ {
 		products[i] = Info{
-			ID:    i + 1,
-			Name:  fmt.Sprintf("Info %d", i+1),
-			Price: float64(i+1) * 0.99,
-			Date:  time.Now(),
+			ID:        i + 1,
+			EventTime: time.Now(),
+			Level:     fmt.Sprintf("Level %d", i+1),
+			Message:   fmt.Sprintf("Message %d", i+1),
 		}
 	}
 	return products
@@ -97,7 +106,7 @@ func insertBatch(conn *sql.DB, products []Info, logger *logrus.Logger) error {
 	defer stmt.Close()
 
 	for _, p := range products {
-		_, err = stmt.ExecContext(ctx, p.ID, p.Name, p.Price, p.Date)
+		_, err = stmt.ExecContext(ctx, p.ID, p.EventTime, p.Level, p.Message)
 		if err != nil {
 			return fmt.Errorf("ошибка при вставке данных: %w", err)
 		}
@@ -108,4 +117,73 @@ func insertBatch(conn *sql.DB, products []Info, logger *logrus.Logger) error {
 		return fmt.Errorf("ошибка при фиксации транзакции: %w", err)
 	}
 	return nil
+}
+
+func readFromPostgres() {
+	// Подключение к базе данных.
+	connStr := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
+		os.Getenv("DB_HOST"), os.Getenv("DB_PORT"), os.Getenv("DB_USER"), os.Getenv("DB_PASSWORD"), os.Getenv("DB_NAME"))
+
+	db, err := sql.Open("postgres", connStr)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	// Проверка подключения
+	err = db.Ping()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Запрос к базе данных
+	rows, err := db.Query("SELECT id, name_user, email FROM users")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()
+
+	// Обработка результатов
+	users := []User{}
+	for rows.Next() {
+		var user User
+		err := rows.Scan(&user.ID, &user.Name, &user.Email)
+		if err != nil {
+			log.Fatal(err)
+		}
+		users = append(users, user)
+	}
+
+	if err := rows.Err(); err != nil {
+		log.Fatal(err)
+	}
+
+	// Вывод результатов
+	fmt.Println("users:")
+	for _, user := range users {
+		fmt.Printf("ID: %d, Name: %s, Email: %s\n", user.ID, user.Name, user.Email)
+	}
+}
+
+func main() {
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, "Hello, Docker!")
+	})
+
+	fmt.Println("Server is running on port 8080...")
+	http.ListenAndServe(":8080", nil)
+
+	err := godotenv.Load()
+	if err != nil {
+		fmt.Println("Error loading .env file")
+	}
+
+	dbHost := os.Getenv("DB_HOST")
+	dbPort := os.Getenv("DB_PORT")
+
+	fmt.Printf("DB_HOST: %s\n", dbHost)
+	fmt.Printf("DB_PORT: %s\n", dbPort)
+
+	//writeToClickhouse()
+	//readFromPostgres()
 }

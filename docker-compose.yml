@@ -1,0 +1,81 @@
+version: '3.8'
+
+services:
+  # Go приложение
+  app:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: go_app
+    restart: always
+    ports:
+      - "8080:8080"
+    networks:
+      app-network:
+        ipv4_address: 173.17.0.2
+    depends_on:
+      - postgres
+      - clickhouse
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=app_postgres_user
+      - DB_PASSWORD=app_postgres_password
+      - DB_NAME=app_db
+      - CLICKHOUSE_HOST=clickhouse
+      - CLICKHOUSE_PORT=8123
+    command: ["./app"] # Команда для запуска Go-приложения
+
+  # ClickHouse
+  clickhouse:
+    image: yandex/clickhouse-server:latest
+    container_name: clickhouse
+    restart: always
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    networks:
+      app-network:
+        ipv4_address: 173.17.0.3
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+      - ./db/clickhouse/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:8123/ping | grep -q 'Ok'"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # PostgreSQL
+  postgres:
+    image: postgres:latest
+    container_name: postgres
+    restart: always
+    ports:
+      - "5432:5432"
+    networks:
+      app-network:
+        ipv4_address: 173.17.0.4
+    environment:
+      DB_USER: app_postgres_user
+      DB_PASSWORD: app_postgres_password
+      DB_NAME: app_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app_postgres_user -h localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  app-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 173.17.0.0/16
+
+volumes:
+  clickhouse_data:
+  postgres_data:
