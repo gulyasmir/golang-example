@@ -21,7 +21,7 @@ services:
       - DB_PORT=5432
       - DB_USER=app_postgres_user
       - DB_PASSWORD=app_postgres_password
-      - DB_NAME=app_db
+      - DB_NAME=app_postgres_db
       - CLICKHOUSE_HOST=clickhouse
       - CLICKHOUSE_PORT=8123
     command: ["./app"] # Команда для запуска Go-приложения
