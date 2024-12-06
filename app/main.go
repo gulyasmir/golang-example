@@ -184,6 +184,6 @@ func main() {
 	fmt.Printf("DB_HOST: %s\n", dbHost)
 	fmt.Printf("DB_PORT: %s\n", dbPort)
 
-	//writeToClickhouse()
-	//readFromPostgres()
+	writeToClickhouse()
+	readFromPostgres()
 }
