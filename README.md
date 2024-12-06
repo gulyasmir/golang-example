@@ -11,6 +11,8 @@ git clone https://github.com/gulyasmir/golang-example.git
 
 и выполнить команду  sudo docker-compose up --build
 
+После запуска проект можно увидеть тут  http://localhost:8080
+
 docker exec -it clickhouse clickhouse-client --query "SHOW TABLES FROM test_db;"
 
 Данная команда покажет таблицу logs.
