@@ -15,7 +15,7 @@ type Info struct {
 
 func main() {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintln(w, "В данном проекте реализовано поднятие БД ClickHouse и скрипта на Go в Docker.")
+		fmt.Fprintln(w, "В kданном проекте реализовано поднятие БД ClickHouse и скрипта на Go в Docker.")
 		fmt.Fprintln(w, "ClickHouse тут  http://localhost:8123/play")
 	})
 
